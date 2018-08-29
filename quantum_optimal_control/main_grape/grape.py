@@ -50,7 +50,7 @@ def Grape(H0,Hops,Hnames,U,total_time,steps,states_concerned_list,convergence = 
 
         file_path = os.path.join(data_path,file_name)
         
-        print "data saved at: " + str(file_path)
+        print("data saved at: " + str(file_path))
 
         with H5File(file_path) as hf:
             hf.add('H0',data=H0)
@@ -73,17 +73,17 @@ def Grape(H0,Hops,Hnames,U,total_time,steps,states_concerned_list,convergence = 
             hf.add('method', method)
             
             g1 = hf.create_group('convergence')
-            for k, v in convergence.items():
+            for k, v in list(convergence.items()):
                 g1.create_dataset(k, data = v)
             
             if not reg_coeffs is None:
                 g2 = hf.create_group('reg_coeffs')
-                for k, v in reg_coeffs.items():
+                for k, v in list(reg_coeffs.items()):
                     g2.create_dataset(k, data = v)
                     
             if not dressed_info is None:
                 g3 = hf.create_group('dressed_info')
-                for k, v in dressed_info.items():
+                for k, v in list(dressed_info.items()):
                     g3.create_dataset(k, data = v)        
     
     if U0 is None:
@@ -124,7 +124,7 @@ def Grape(H0,Hops,Hnames,U,total_time,steps,states_concerned_list,convergence = 
             wall_clock_time = time.time() - grape_start_time
             with H5File(file_path) as hf:
                 hf.add('wall_clock_time',data=np.array(wall_clock_time))
-            print "data saved at: " + str(file_path)
+            print("data saved at: " + str(file_path))
         
         return SS.uks,SS.Uf
     except KeyboardInterrupt:
@@ -134,7 +134,7 @@ def Grape(H0,Hops,Hnames,U,total_time,steps,states_concerned_list,convergence = 
             wall_clock_time = time.time() - grape_start_time
             with H5File(file_path) as hf:
                 hf.add('wall_clock_time',data=np.array(wall_clock_time))
-            print "data saved at: " + str(file_path)
+            print("data saved at: " + str(file_path))
         
         display.clear_output()
     
