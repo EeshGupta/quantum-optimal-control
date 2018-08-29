@@ -12,7 +12,7 @@ As an example of what the package produces, here is its output in the example of
 # Setup  
 You will just need to setup Tensorflow, Please follow the instructions [here] (https://www.tensorflow.org/versions/r0.10/get_started/os_setup.html)  
 
-Currently only supports linux system and Python 2.7.
+Currently only supports linux system and Python 3.
 
 # Currently Implemented Cost Functions  
 Refer to the [Regularization functions file] (https://github.com/SchusterLab/GRAPE-Tensorflow/blob/master/core/RegularizationFunctions.py) for details or to add a new cost function  

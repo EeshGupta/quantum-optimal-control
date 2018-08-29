@@ -1,10 +1,6 @@
 import os 
 import sys 
 
-#Make sure python 2.7
-if not (sys.version_info[0] == 2 and sys.version_info[1] == 7):
-    sys.exit("Sorry, only Python 2.7 is currently supported currently.")
-
 try:
 	from setuptools import setup 
 except: 
@@ -66,7 +62,7 @@ CLASSIFIERS = [
 	'Intended Audience :: Science/Research',
 	'Natural Language :: English',
     'Operating System :: Linux',
-    'Programming Language :: Python :: 2.7',
+    'Programming Language :: Python :: 3',
     'Programming Language :: Python :: Implementation :: CPython',
     'Topic :: Scientific/Engineering :: Physics',
 ]
