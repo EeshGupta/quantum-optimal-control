@@ -6,7 +6,6 @@ from quantum_optimal_control.core.system_parameters import SystemParameters
 from quantum_optimal_control.core.convergence import Convergence
 from quantum_optimal_control.core.run_session import run_session
 
-
 import random as rd
 import time
 from IPython import display
@@ -55,7 +54,7 @@ def Grape(H0, Hops, Hnames, U, total_time, steps, states_concerned_list, converg
         with H5File(file_path) as hf:
             hf.add('H0', data=H0)
             hf.add('Hops', data=Hops)
-            hf.add('Hnames', data=Hnames)
+            hf.add('Hnames', data=[Hname.encode('utf8') for Hname in Hnames])
             hf.add('U', data=U)
             hf.add('total_time', data=total_time)
             hf.add('steps', data=steps)
@@ -70,7 +69,7 @@ def Grape(H0, Hops, Hnames, U, total_time, steps, states_concerned_list, converg
 
             if not initial_guess is None:
                 hf.add('initial_guess', data=initial_guess)
-            hf.add('method', method)
+            hf.add('method', method.encode('utf8'))
 
             g1 = hf.create_group('convergence')
             for k, v in list(convergence.items()):
