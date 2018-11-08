@@ -149,7 +149,7 @@ class run_session:
     def minimize_opt_fun(self, x):
         # minimization function called by scipy in each iteration
         self.l, self.rl, self.grads, self.metric, self.g_squared = self.get_error(
-            np.reshape(x, (len(self.sys_para.ops_c), len(x)/len(self.sys_para.ops_c))))
+            np.reshape(x, (len(self.sys_para.ops_c), int(len(x)/len(self.sys_para.ops_c)))))
 
         if self.l < self.conv.conv_target:
             self.conv_time = time.time()-self.start_time
@@ -183,7 +183,7 @@ class run_session:
                        method=method, jac=jac, options=options)
 
         uks = np.reshape(res['x'], (len(self.sys_para.ops_c),
-                                    len(res['x'])/len(self.sys_para.ops_c)))
+                                    int(len(res['x'])/len(self.sys_para.ops_c))))
 
         print(self.method + ' optimization done')
 
