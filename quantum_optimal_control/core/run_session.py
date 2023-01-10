@@ -1,5 +1,5 @@
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 from .analysis import Analysis
 import os
 import time
@@ -10,6 +10,7 @@ from quantum_optimal_control.helper_functions.data_management import H5File
 
 class run_session:
     def __init__(self, tfs, graph, conv, sys_para, method, show_plots=True, single_simulation=False, use_gpu=True):
+        print('run session initialized')
         self.tfs = tfs
         self.graph = graph
         self.conv = conv

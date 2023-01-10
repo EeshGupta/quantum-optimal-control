@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import math
 from quantum_optimal_control.helper_functions.grape_functions import c_to_r_mat, sort_ev
 from .regularization_functions import get_reg_loss

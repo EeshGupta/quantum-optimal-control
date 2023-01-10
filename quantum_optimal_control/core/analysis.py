@@ -1,7 +1,7 @@
 import numpy as np
 from quantum_optimal_control.helper_functions.grape_functions import sort_ev, get_state_index
 import os
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from quantum_optimal_control.helper_functions.data_management import H5File
 

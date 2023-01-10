@@ -1,4 +1,4 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 import numpy as np
 import scipy.linalg as la
 from quantum_optimal_control.core.tensorflow_state import TensorflowState
@@ -126,7 +126,7 @@ def Grape(H0, Hops, Hnames, U, total_time, steps, states_concerned_list, converg
                 hf.add('wall_clock_time', data=np.array(wall_clock_time))
             print("data saved at: " + str(file_path))
 
-        return SS.uks, SS.Uf
+        return SS.uks, SS.Uf, file_path
     except KeyboardInterrupt:
 
         # save wall clock time
