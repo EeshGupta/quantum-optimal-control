@@ -1,4 +1,4 @@
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 import numpy as np
 import scipy.linalg as la
 from quantum_optimal_control.core.tensorflow_state import TensorflowState
@@ -16,6 +16,7 @@ import os
 
 def Grape(H0, Hops, Hnames, U, total_time, steps, states_concerned_list, convergence=None, U0=None, reg_coeffs=None, dressed_info=None, maxA=None, use_gpu=True, sparse_H=True, sparse_U=False, sparse_K=False, draw=None, initial_guess=None, show_plots=True, unitary_error=1e-4, method='Adam', state_transfer=False, no_scaling=False, freq_unit='GHz', file_name=None, save=True, data_path=None, Taylor_terms=None, use_inter_vecs=True):
 
+    print('tensorflow2 grape')
     # start time
     grape_start_time = time.time()
 
@@ -110,14 +111,17 @@ def Grape(H0, Hops, Hnames, U, total_time, steps, states_concerned_list, converg
 
     with tf.device(dev):
         tfs = TensorflowState(sys_para)  # create tensorflow graph
-        graph = tfs.build_graph()
+        _ = tfs.initialize_all()
+        #graph = tfs.build_graph()
 
     conv = Convergence(sys_para, time_unit, convergence)
 
     # run the optimization
     try:
-        SS = run_session(tfs, graph, conv, sys_para, method,
+        SS = run_session(tfs, conv, sys_para, method,
                          show_plots=sys_para.show_plots, use_gpu=use_gpu)
+                        #  SS = run_session(tfs, graph, conv, sys_para, method,
+                        #  show_plots=sys_para.show_plots, use_gpu=use_gpu)
 
         # save wall clock time
         if save:

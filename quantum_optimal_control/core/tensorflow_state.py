@@ -1,12 +1,12 @@
 import os
 
 import numpy as np
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 import math
 from quantum_optimal_control.helper_functions.grape_functions import c_to_r_mat, sort_ev
-from .regularization_functions import get_reg_loss
-from tensorflow.python.framework import function
-from tensorflow.python.framework import ops
+from .regularization_functions import get_reg_loss, get_reg_loss_tf2
+# from tensorflow.python.framework import function
+# from tensorflow.python.framework import ops
 
 
 class TensorflowState:
@@ -46,31 +46,51 @@ class TensorflowState:
 
             return matexp
 
-        @function.Defun(tf.float32, tf.float32, tf.float32)
-        def matexp_op_grad(uks, H_all, grad):
-            # gradient of matrix exponential
-            coeff_grad = []
+        #@function.Defun(tf.float32, tf.float32, tf.float32)
+        # def matexp_op_grad(uks, H_all, grad):
+        #     print('matexp_op_grad called')
+        #     # gradient of matrix exponential
+        #     coeff_grad = []
 
-            coeff_grad.append(tf.constant(0, dtype=tf.float32))
+        #     coeff_grad.append(tf.constant(0, dtype=tf.float32))
 
-            # get output of the function
-            matexp = get_matexp(uks, H_all)
-            ###
+        #     # get output of the function
+        #     matexp = get_matexp(uks, H_all)
+        #     ###
 
-            for ii in range(1, input_num):
-                coeff_grad.append(tf.reduce_sum(tf.multiply(grad,
-                                                            tf.matmul(H_all[ii], matexp, a_is_sparse=self.sys_para.sparse_H, b_is_sparse=self.sys_para.sparse_U))))
+        #     for ii in range(1, input_num):
+        #         coeff_grad.append(tf.reduce_sum(tf.multiply(grad,
+        #                                                     tf.matmul(H_all[ii], matexp, a_is_sparse=self.sys_para.sparse_H, b_is_sparse=self.sys_para.sparse_U))))
 
-            return [tf.stack(coeff_grad), tf.zeros(tf.shape(H_all), dtype=tf.float32)]
+        #     return [tf.stack(coeff_grad), tf.zeros(tf.shape(H_all), dtype=tf.float32)]
 
         global matexp_op
 
-        @function.Defun(tf.float32, tf.float32, grad_func=matexp_op_grad)
+        #@function.Defun(tf.float32, tf.float32, grad_func=matexp_op_grad)
+        @tf.custom_gradient
         def matexp_op(uks, H_all):
+            #print('matexp_op called')
             # matrix exponential defun operator
             matexp = get_matexp(uks, H_all)
+            
+            def grad(upstream):
+                #print('matexp_op_grad called')
+                # gradient of matrix exponential
+                coeff_grad = []
 
-            return matexp
+                coeff_grad.append(tf.constant(0, dtype=tf.float32))
+
+                # get output of the function
+                matexp = get_matexp(uks, H_all)
+                ###
+
+                for ii in range(1, input_num):
+                    coeff_grad.append(tf.reduce_sum(tf.multiply(upstream,
+                                                                tf.matmul(H_all[ii], matexp, a_is_sparse=self.sys_para.sparse_H, b_is_sparse=self.sys_para.sparse_U))))
+
+                return [tf.stack(coeff_grad), tf.zeros(tf.shape(H_all), dtype=tf.float32)]
+
+            return matexp, grad
 
         def get_matvecexp(uks, H_all, psi):
             # matrix vector exponential
@@ -95,47 +115,108 @@ class TensorflowState:
 
             return matvecexp
 
-        @function.Defun(tf.float32, tf.float32, tf.float32, tf.float32)
-        def matvecexp_op_grad(uks, H_all, psi, grad):
-            # graident of matrix vector exponential
-            coeff_grad = []
+        # @function.Defun(tf.float32, tf.float32, tf.float32, tf.float32)
+        # def matvecexp_op_grad(uks, H_all, psi, grad):
+        #     print('matvecexp_op_grad    called')
+        #     print(tf.__version__)
+        #     # graident of matrix vector exponential
+        #     coeff_grad = []
 
-            coeff_grad.append(tf.constant(0, dtype=tf.float32))
+        #     coeff_grad.append(tf.constant(0, dtype=tf.float32))
 
-            # get output of the function
-            matvecexp = get_matvecexp(uks, H_all, psi)
-            #####
+        #     # get output of the function
+        #     matvecexp = get_matvecexp(uks, H_all, psi)
+        #     #####
 
-            for ii in range(1, input_num):
-                coeff_grad.append(tf.reduce_sum(tf.multiply(grad,
-                                                            tf.matmul(H_all[ii], matvecexp, a_is_sparse=self.sys_para.sparse_H, b_is_sparse=self.sys_para.sparse_K))))
+        #     for ii in range(1, input_num):
+        #         coeff_grad.append(tf.reduce_sum(tf.multiply(grad,
+        #                                                     tf.matmul(H_all[ii], matvecexp, a_is_sparse=self.sys_para.sparse_H, b_is_sparse=self.sys_para.sparse_K))))
 
-            I = H_all[input_num]
-            vec_grad = grad
-            uks_Hk_list = []
-            for ii in range(input_num):
-                uks_Hk_list.append((-uks[ii])*H_all[ii])
+        #     I = H_all[input_num]
+        #     vec_grad = grad
+        #     uks_Hk_list = []
+        #     for ii in range(input_num):
+        #         uks_Hk_list.append((-uks[ii])*H_all[ii])
 
-            H = tf.add_n(uks_Hk_list)
-            vec_grad_n = grad
-            factorial = 1.
+        #     H = tf.add_n(uks_Hk_list)
+        #     vec_grad_n = grad
+        #     factorial = 1.
 
-            for ii in range(1, taylor_terms):
-                factorial = factorial * ii
-                vec_grad_n = tf.matmul(
-                    H, vec_grad_n, a_is_sparse=self.sys_para.sparse_H, b_is_sparse=self.sys_para.sparse_K)
-                vec_grad = vec_grad + vec_grad_n/factorial
+        #     for ii in range(1, taylor_terms):
+        #         factorial = factorial * ii
+        #         vec_grad_n = tf.matmul(
+        #             H, vec_grad_n, a_is_sparse=self.sys_para.sparse_H, b_is_sparse=self.sys_para.sparse_K)
+        #         vec_grad = vec_grad + vec_grad_n/factorial
 
-            return [tf.stack(coeff_grad), tf.zeros(tf.shape(H_all), dtype=tf.float32), vec_grad]
+        #     return [tf.stack(coeff_grad), tf.zeros(tf.shape(H_all), dtype=tf.float32), vec_grad]
 
         global matvecexp_op
 
-        @function.Defun(tf.float32, tf.float32, tf.float32, grad_func=matvecexp_op_grad)
+        
+        #@function.Defun(tf.float32, tf.float32, tf.float32, grad_func=matvecexp_op_grad)
+        @tf.custom_gradient
         def matvecexp_op(uks, H_all, psi):
+            #print('matvecexp_op called')
             # matrix vector exponential defun operator
             matvecexp = get_matvecexp(uks, H_all, psi)
 
-            return matvecexp
+            def grad(upstream):
+                #print('matvecexp_op_grad    called')
+                #print(tf.__version__)
+                # graident of matrix vector exponential
+                #print('upstream is ' + str(upstream))
+                #rint(np.shape(H_all))
+
+                coeff_grad = []
+
+                coeff_grad.append(tf.constant(0, dtype=tf.float32))
+
+                # get output of the function
+                matvecexp = get_matvecexp(uks, H_all, psi)
+                #print(np.shape(matvecexp))
+                #####
+
+                for ii in range(1, input_num):
+                    coeff_grad.append(tf.reduce_sum(tf.multiply(upstream,
+                                                                tf.matmul(H_all[ii], matvecexp, a_is_sparse=self.sys_para.sparse_H, b_is_sparse=self.sys_para.sparse_K))))
+
+                pseudo_coeff = []
+                for ii in range(1, input_num):
+                    pseudo_coeff.append(tf.matmul(H_all[ii], matvecexp, a_is_sparse=self.sys_para.sparse_H, b_is_sparse=self.sys_para.sparse_K))
+                I = H_all[input_num]
+                vec_grad = upstream
+                uks_Hk_list = []
+                for ii in range(input_num):
+                    uks_Hk_list.append((-uks[ii])*H_all[ii])
+
+                H = tf.add_n(uks_Hk_list)
+                vec_grad_n = upstream
+                factorial = 1.
+
+                for ii in range(1, taylor_terms):
+                    factorial = factorial * ii
+                    vec_grad_n = tf.matmul(
+                        H, vec_grad_n, a_is_sparse=self.sys_para.sparse_H, b_is_sparse=self.sys_para.sparse_K)
+                    vec_grad = vec_grad + vec_grad_n/factorial
+                #print('shape')
+                #print(self.sys_para.ops_len)
+                #print(input_num)
+                #print(np.shape(coeff_grad))
+                #print(np.shape(vec_grad))
+                #print([coeff_grad[i] for i in range(input_num)])
+                print('inside grad func')
+                #print(input_num)
+                #print('shape of uks:' + str(np.shape(uks)))
+                #print(coeff_grad)
+                print(upstream)
+                print(pseudo_coeff)
+                #print(H_all)
+                print('-----------------------------------')
+                
+                #returning d matvecexp_op/ d uks, d matvecexp_op/ d H_all, d matvecexp_op/ d psi
+                return tf.stack(coeff_grad), tf.zeros(tf.shape(H_all), dtype=tf.float32), vec_grad
+
+            return matvecexp, grad
 
     def init_variables(self):
         self.tf_one_minus_gaussian_envelope = tf.constant(
@@ -163,6 +244,7 @@ class TensorflowState:
             self.target_vecs = tf.matmul(
                 self.tf_target_state, self.packed_initial_vectors)
         print("Propagators initialized.")
+        print(self.sys_para.target_vectors)
 
     def init_tf_ops_weight(self):
 
@@ -173,18 +255,41 @@ class TensorflowState:
             tf.ones([self.sys_para.steps]), trainable=False)
         # will collect all weights here
         self.weights_unpacked = [self.H0_weight]
+
         self.ops_weight_base = tf.Variable(tf.constant(
             self.sys_para.ops_weight_base, dtype=tf.float32), dtype=tf.float32, name="weights_base")
 
         self.ops_weight = tf.sin(self.ops_weight_base, name="weights")
+       # print('debug..init')
+       # print(np.shape(self.ops_weight))
         for ii in range(self.sys_para.ops_len):
             self.weights_unpacked.append(
                 self.sys_para.ops_max_amp[ii]*self.ops_weight[ii, :])
-
-        # print len(self.sys_para.ops_max_amp)
+         
         self.H_weights = tf.stack(self.weights_unpacked, name="packed_weights")
 
         print("Operators weight initialized.")
+    def get_tf_ops_weight_tf2(self, ops_weight_base):
+
+        # tf weights of operators
+        # print('debug..init')
+        # print(np.shape(ops_weight_base))
+        ops_weight = tf.sin(ops_weight_base, name="weights")
+        #print('debug..get_weight')
+        #print(np.shape(self.ops_weight))
+        self.ops_weight = ops_weight
+
+        weights_unpacked = [self.H0_weight]
+        for ii in range(self.sys_para.ops_len):
+            weights_unpacked.append(
+                self.sys_para.ops_max_amp[ii]*ops_weight[ii, :])
+        self.weights_unpacked = weights_unpacked 
+        #print('inside ops weight')
+        #print(self.sys_para.ops_max_amp)
+        H_weights = tf.stack(weights_unpacked, name="packed_weights")
+        self.H_weights = H_weights
+
+        return  H_weights, ops_weight 
 
     def init_tf_inter_propagators(self):
         # initialize intermediate unitaries
@@ -199,6 +304,14 @@ class TensorflowState:
         # This function determines the nature of propagation
 
         propagator = matexp_op(self.H_weights[:, layer], self.tf_matrix_list)
+
+        return propagator
+    
+    def get_inter_state_op_tf2(self, weights, layer):
+        # build operator for intermediate state propagation
+        # This function determines the nature of propagation
+
+        propagator = matexp_op(weights[:, layer], self.tf_matrix_list)
 
         return propagator
 
@@ -228,6 +341,34 @@ class TensorflowState:
 
         print("Intermediate propagators initialized.")
 
+    def get_tf_propagator_tf2(self, weights):
+        self.tf_matrix_list = tf.constant(
+            self.sys_para.matrix_list, dtype=tf.float32)
+
+        # build propagator for all the intermediate states
+
+        tf_inter_state_op = []
+        for ii in np.arange(0, self.sys_para.steps):
+            tf_inter_state_op.append(weights, self.get_inter_state_op_tf2(ii))
+
+        # first intermediate propagator
+        self.inter_states[0] = tf.matmul(tf_inter_state_op[0], self.tf_initial_unitary, a_is_sparse=self.sys_para.sparse_U,
+                                         b_is_sparse=self.sys_para.sparse_K)
+        # subsequent operation layers and intermediate propagators
+
+        for ii in np.arange(1, self.sys_para.steps):
+            self.inter_states[ii] = tf.matmul(tf_inter_state_op[ii], self.inter_states[ii-1], a_is_sparse=self.sys_para.sparse_U,
+                                              b_is_sparse=self.sys_para.sparse_K)
+
+        final_state = self.inter_states[self.sys_para.steps-1]
+        self.final_state = final_state
+
+        self.unitary_scale = (0.5/self.sys_para.state_num)*tf.reduce_sum(
+            tf.matmul(tf.transpose(self.final_state), self.final_state))
+
+        # print("Intermediate propagators initialized.")
+        return final_state
+
     def init_tf_inter_vectors(self):
         # inter vectors for unitary evolution, obtained by multiplying the propagation operator K_j with initial vector
         self.inter_vecs_list = []
@@ -256,6 +397,8 @@ class TensorflowState:
 
         for ii in np.arange(0, self.sys_para.steps):
             psi = inter_vec
+           # self.psi = psi
+            #self.H_all = tf_matrix_list
             inter_vec = matvecexp_op(
                 self.H_weights[:, ii], tf_matrix_list, psi)
             self.inter_vecs_list.append(inter_vec)
@@ -263,6 +406,29 @@ class TensorflowState:
         self.inter_vecs = tf.unstack(self.inter_vecs_packed, axis=2)
 
         print("Vectors initialized.")
+    
+    def get_tf_inter_vector_state_tf2(self, weights):
+        # inter vectors for state transfer, obtained by evolving the initial vector
+
+        tf_matrix_list = tf.constant(
+            self.sys_para.matrix_list, dtype=tf.float32)
+
+        self.inter_vecs_list = []
+        inter_vec = self.packed_initial_vectors
+        self.inter_vecs_list.append(inter_vec)
+
+        for ii in np.arange(0, self.sys_para.steps):
+            psi = inter_vec
+            #self.psi = psi
+            #self.H_all = tf_matrix_list
+            inter_vec = matvecexp_op(
+                weights[:, ii], tf_matrix_list, psi)
+            self.inter_vecs_list.append(inter_vec)
+        self.inter_vecs_packed = tf.stack(self.inter_vecs_list, axis=1)
+        self.inter_vecs = tf.unstack(self.inter_vecs_packed, axis=2)
+        
+        return self.inter_vecs_packed
+        #print("Vectors initialized.")
 
     def get_inner_product(self, psi1, psi2):
         # Take 2 states psi1,psi2, calculate their overlap, for single vector
@@ -304,7 +470,16 @@ class TensorflowState:
             imags = tf.square(tf.reduce_sum(tf.subtract(bc, ad)))
             norm = (tf.add(reals, imags)) / \
                 (len(self.sys_para.states_concerned_list)**2)
+           # print('inside inner product funtion')
+            #print(norm)
         return norm
+    
+    def get_inner_product_2D_tf2(self, psi1, psi2):
+        #assumes psi1 and psi2 are complex (no c_to_vec() function applied to them) 
+        # Take 2 states psi1,psi2, calculate their overlap, for arbitrary number of vectors
+        # psi1 and psi2 are shaped as (2*state_num, number of vectors)
+        
+        return tf.matmul(tf.transpose(tf.math.conj(psi1)), psi2)
 
     def get_inner_product_3D(self, psi1, psi2):
         # Take 2 states psi1,psi2, calculate their overlap, for arbitrary number of vectors and timesteps
@@ -352,11 +527,65 @@ class TensorflowState:
 
         print("Training loss initialized.")
 
+    def get_training_loss_tf2(self, ops_weight_base):
+        # Adding all penalties
+
+        H_weights, ops_weight = self.get_tf_ops_weight_tf2(ops_weight_base)
+        # print('debug..new_loss_funcs')
+        # print(np.shape(ops_weight))
+        if self.sys_para.state_transfer == False:
+
+            final_state = self.get_tf_propagator_tf2(H_weights)
+            self.final_vecs = tf.matmul(
+                final_state, self.packed_initial_vectors)
+
+            self.loss = 1 - \
+                self.get_inner_product_2D(self.final_vecs, self.target_vecs)
+
+        else:
+            #print('in here')
+            self.loss = tf.constant(0.0, dtype=tf.float32)
+            inter_vecs_packed = self.get_tf_inter_vector_state_tf2(H_weights)
+            final_state = inter_vecs_packed[:,
+                                                      self.sys_para.steps, :]
+            print('inner_product')
+            print(final_state)
+            print(self.target_vecs)
+            inner = self.get_inner_product_2D(final_state, self.target_vecs)
+            print(inner)
+            loss = 1 - inner#self.get_inner_product_2D_tf2(final_state, self.target_vecs)
+            self.loss = loss
+            self.final_state = final_state
+            self.unitary_scale = self.get_inner_product_2D(
+                self.final_state, self.final_state)
+
+            psi = self.packed_initial_vectors
+            H_all = tf.constant(
+            self.sys_para.matrix_list, dtype=tf.float32)
+            #oss = matvecexp_op(H_weights, H_all, psi)
+            #print('final state')
+            #print('inter_vecs_packed is ')
+            #print(np.shape(inter_vecs_packed))
+            #loss =tf.reduce_sum(
+                #    tf.reduce_sum(final_state, axis =1), axis = 0)/1000#matvecexp_op(H_weights, H_all, psi)
+        #Below is just test code
+        # self.loss = tf.sin(
+        #     tf.reduce_sum(
+        #     tf.reduce_sum(H_weights, axis = 1), axis = 0
+        # )
+        # )
+        # reg_loss = get_reg_loss_tf2(self, ops_weight)
+        # self.reg_loss = reg_loss
+
+        return loss#reg_loss
+
+        print("Training loss initialized.")
+
     def init_optimizer(self):
         # Optimizer. Takes a variable learning rate.
-        self.learning_rate = tf.placeholder(tf.float32, shape=[])
-        self.opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-
+        # self.learning_rate = tf.placeholder(tf.float32, shape=[])
+        # self.opt = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
+        self.opt = tf.compat.v1.train.AdamOptimizer()
         # Here we extract the gradients of the pulses
         self.grad = self.opt.compute_gradients(self.reg_loss)
 
@@ -373,32 +602,65 @@ class TensorflowState:
         self.saver = tf.train.Saver()
 
         print("Utilities initialized.")
+    
+    def init_utilities_tf2(self):
+        # Add ops to save and restore all the variables.
+        #self.saver = tf.train.Saver()
 
-    def build_graph(self):
-        # graph building for the quantum optimal control
-        graph = tf.Graph()
-        with graph.as_default():
+        print("Not added train.saver functionality yet.")
 
-            print("Building graph:")
+    def initialize_all(self):
+        # initialize all 
 
-            self.init_defined_functions()
-            self.init_variables()
-            self.init_tf_vectors()
-            self.init_tf_propagators()
-            self.init_tf_ops_weight()
-            if self.sys_para.state_transfer == False:
-                self.init_tf_inter_propagators()
-                self.init_tf_propagator()
-                if self.sys_para.use_inter_vecs:
-                    self.init_tf_inter_vectors()
-                else:
-                    self.inter_vecs = None
+            #print("Building graph:")
+
+        self.init_defined_functions()
+        self.init_variables()
+        self.init_tf_vectors()
+        self.init_tf_propagators()
+        self.init_tf_ops_weight()
+        if self.sys_para.state_transfer == False:
+            self.init_tf_inter_propagators()
+            self.init_tf_propagator()
+            if self.sys_para.use_inter_vecs:
+                self.init_tf_inter_vectors()
             else:
-                self.init_tf_inter_vector_state()
-            self.init_training_loss()
-            self.init_optimizer()
-            self.init_utilities()
+                self.inter_vecs = None
+        else:
+            self.init_tf_inter_vector_state()
+        #print('problem averted')
+        self.init_training_loss()
+        #self.init_optimizer()
+        self.init_utilities_tf2()
 
-            print("Graph built!")
+        #print("Graph built!")
 
-        return graph
+        return None
+    # def build_graph(self):
+    #     # graph building for the quantum optimal control
+    #     graph = tf.Graph()
+    #     with graph.as_default():
+
+    #         print("Building graph:")
+
+    #         self.init_defined_functions()
+    #         self.init_variables()
+    #         self.init_tf_vectors()
+    #         self.init_tf_propagators()
+    #         self.init_tf_ops_weight()
+    #         if self.sys_para.state_transfer == False:
+    #             self.init_tf_inter_propagators()
+    #             self.init_tf_propagator()
+    #             if self.sys_para.use_inter_vecs:
+    #                 self.init_tf_inter_vectors()
+    #             else:
+    #                 self.inter_vecs = None
+    #         else:
+    #             self.init_tf_inter_vector_state()
+    #         self.init_training_loss()
+    #         self.init_optimizer()
+    #         self.init_utilities()
+
+    #         print("Graph built!")
+
+    #     return graph

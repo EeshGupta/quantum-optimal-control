@@ -73,7 +73,7 @@ class Convergence:
 
         self.anly = anly
         self.save_evol(anly)
-        self.plot_summary()
+        #self.plot_summary()
 
     def get_convergence(self):
         self.costs.append(self.last_cost)
@@ -146,12 +146,15 @@ class Convergence:
         if self.sys_para.show_plots == True:
 
             plt.subplot(gs[index, :], title='Error = %1.2e; Other errors = %1.2e; Unitary Metric: %.5f; Runtime: %.1fs; Estimated Remaining Runtime: %.1fh' % (self.last_cost, self.last_reg_cost-self.last_cost,
-                                                                                                                                                               self.anly.tf_unitary_scale.eval(),
+                                                                                                                                                               self.anly.tf_unitary_scale,
 
                                                                                                                                                                self.runtime,
                                                                                                                                                                self.estimated_runtime))
 
             index += 1
+            print('inside plot')
+            print(self.iterations)
+            print(self.costs)
             plt.plot(np.array(self.iterations), np.array(
                 self.costs), 'bx-', label='Fidelity Error')
             plt.plot(np.array(self.iterations), np.array(

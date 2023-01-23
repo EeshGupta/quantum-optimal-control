@@ -1,5 +1,5 @@
 import numpy as np
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from .analysis import Analysis
 import os
 import time
@@ -9,10 +9,10 @@ from quantum_optimal_control.helper_functions.data_management import H5File
 
 
 class run_session:
-    def __init__(self, tfs, graph, conv, sys_para, method, show_plots=True, single_simulation=False, use_gpu=True):
-        print('run session initialized')
+    def __init__(self, tfs, conv, sys_para, method, show_plots=True, single_simulation=False, use_gpu=True):
+        #print('run session initialized')
         self.tfs = tfs
-        self.graph = graph
+        # self.graph = graph
         self.conv = conv
         self.sys_para = sys_para
         self.update_step = conv.update_step
@@ -21,29 +21,31 @@ class run_session:
         self.show_plots = show_plots
         self.target = False
         if not use_gpu:
-            config = tf.ConfigProto(device_count={'GPU': 0})
+            #config = tf.ConfigProto(device_count={'GPU': 0})
+            print("GPU Not available now; will integrate later")
+        #else
+        config = None
+
+        #with tf.Session(graph=graph, config=config) as self.session:
+
+            #tf.global_variables_initializer().run()
+
+            #print("Initialized")
+
+        if self.method == 'EVOLVE':
+            self.start_time = time.time()
+            x0 = self.sys_para.ops_weight_base
+            self.l, self.rl, self.grads, self.metric, self.g_squared = self.get_error(
+                x0)
+            self.get_end_results()
+
         else:
-            config = None
+            if self.method != 'ADAM':  # Any BFGS scheme
+                print('BFGS not available; use ADAM')
+                #self.bfgs_optimize(method=self.method)
 
-        with tf.Session(graph=graph, config=config) as self.session:
-
-            tf.global_variables_initializer().run()
-
-            print("Initialized")
-
-            if self.method == 'EVOLVE':
-                self.start_time = time.time()
-                x0 = self.sys_para.ops_weight_base
-                self.l, self.rl, self.grads, self.metric, self.g_squared = self.get_error(
-                    x0)
-                self.get_end_results()
-
-            else:
-                if self.method != 'ADAM':  # Any BFGS scheme
-                    self.bfgs_optimize(method=self.method)
-
-                if self.method == 'ADAM':
-                    self.start_adam_optimizer()
+            if self.method == 'ADAM':
+                self.start_adam_optimizer_tf2()
 
     def start_adam_optimizer(self):
         # adam optimizer
@@ -51,8 +53,10 @@ class run_session:
         self.end = False
         while True:
 
-            self.g_squared, self.l, self.rl, self.metric = self.session.run(
-                [self.tfs.grad_squared, self.tfs.loss, self.tfs.reg_loss, self.tfs.unitary_scale])
+            self.g_squared, self.l, self.rl, self.metric = [self.tfs.grad_squared, self.tfs.loss, self.tfs.reg_loss, self.tfs.unitary_scale]
+
+            # self.g_squared, self.l, self.rl, self.metric = self.session.run(
+            #     [self.tfs.grad_squared, self.tfs.loss, self.tfs.reg_loss, self.tfs.unitary_scale])
 
             if (self.l < self.conv.conv_target) or (self.g_squared < self.conv.min_grad) \
                     or (self.iterations >= self.conv.max_iterations):
@@ -66,10 +70,79 @@ class run_session:
 
             learning_rate = float(
                 self.conv.rate) * np.exp(-float(self.iterations) / self.conv.learning_rate_decay)
-            self.feed_dict = {self.tfs.learning_rate: learning_rate}
+            self.tfs.learning_rate =  learning_rate
+            #self.feed_dict = {self.tfs.learning_rate: learning_rate}
 
-            _ = self.session.run([self.tfs.optimizer],
-                                 feed_dict=self.feed_dict)
+            _ = self.tfs.optimizer(self.tfs.learning_rate)
+            # _ = [self.tfs.optimizer],
+            #                      feed_dict=self.feed_dict)
+
+    def start_adam_optimizer_tf2(self):
+        # adam optimizer
+        self.start_time = time.time()
+        self.end = False
+        
+        optimizer = tf.optimizers.Adam(self.conv.rate)
+        grad = 1
+        loss = 1
+        variables = self.tfs.ops_weight_base
+        print(np.shape(self.tfs.ops_weight_base))
+
+        print('no changing learning rate')
+        while True:
+
+            #compute  gradients first 
+            with tf.GradientTape() as tape: 
+                #ops_weight_base =  #these are variables (weights of drive operators)
+                print('inside tape')
+                print(np.shape(self.tfs.ops_weight_base))
+                loss = self.tfs.get_training_loss_tf2(self.tfs.ops_weight_base)
+                # print(np.shape(self.tfs.ops_weight_base))
+                # print(np.shape(variables))
+                print(loss)
+                grad = tape.gradient(loss, variables)
+
+            #process gradient information
+            #print(np.shape(grad))
+            self.tfs.grad = grad
+            self.tfs.grad_pack = tf.stack([g for g in self.tfs.grad])
+            self.tfs.grads = [tf.nn.l2_loss(g) for g in self.tfs.grad]
+            self.tfs.grad_squared = tf.reduce_sum(tf.stack(self.tfs.grads))
+            self.g_squared, self.l, self.rl, self.metric = [self.tfs.grad_squared, self.tfs.loss, self.tfs.reg_loss, self.tfs.unitary_scale]
+            print('metric')
+            print(self.metric)
+            print('loss')
+            print(self.l)
+            print('self.grads')
+            print(grad)
+
+            #Now update stopping conditions
+        
+            if (self.l < self.conv.conv_target) or (self.g_squared < self.conv.min_grad) \
+                   or (self.iterations >= self.conv.max_iterations):
+                self.end = True
+                print('self.end')
+                print(self.conv.conv_target)
+                print('hi')
+                print(self.end)
+
+            self.update_and_save()
+
+            if self.end:
+                self.get_end_results()
+                break
+
+            # learning_rate = float(
+            #     self.conv.rate) * np.exp(-float(self.iterations) / self.conv.learning_rate_decay)
+            # self.tfs.learning_rate =  learning_rate
+            #self.feed_dict = {self.tfs.learning_rate: learning_rate}
+           # print(variables)
+
+            optimizer.apply_gradients(zip([grad], [variables]))
+            print('applied gradients')
+            # _ = self.tfs.optimizer(self.tfs.learning_rate)
+            # _ = [self.tfs.optimizer],
+            #                      feed_dict=self.feed_dict)
 
     def update_and_save(self):
 
@@ -82,8 +155,8 @@ class run_session:
                 self.display()
             if (self.iterations % self.conv.evol_save_step == 0):
                 if not (self.sys_para.show_plots == True and (self.iterations % self.conv.update_step == 0)):
-                    self.anly = Analysis(self.sys_para, self.tfs.final_state, self.tfs.ops_weight, self.tfs.unitary_scale,
-                                         self.tfs.inter_vecs)
+                    # self.anly = Analysis(self.sys_para, self.tfs.final_state, self.tfs.ops_weight, self.tfs.unitary_scale,
+                    #                      self.tfs.inter_vecs)
                     if not (self.iterations % self.conv.update_step == 0):
                         self.save_data()
                     self.conv.save_evol(self.anly)
@@ -111,16 +184,22 @@ class run_session:
     def Get_uks(self):
         # to get the pulse amplitudes
         uks = self.anly.get_ops_weight()
+        print(uks.dtype)
+        changeable_uks = tf.Variable(tf.zeros(shape = np.shape(uks)), dtype = tf.float32)
+        #uks_ = uks.read_value() #because don't want to mess with variables
         for ii in range(len(uks)):
-            uks[ii] = self.sys_para.ops_max_amp[ii]*uks[ii]
-        return uks
+            changeable_uks[ii].assign(self.sys_para.ops_max_amp[ii]*uks[ii])
+        return changeable_uks
 
     def get_error(self, uks):
         # get error and gradient for scipy bfgs:
-        self.session.run(self.tfs.ops_weight_base.assign(uks))
+        self.tfs.ops_weight_base.assign(uks)
+        # self.session.run(self.tfs.ops_weight_base.assign(uks))
 
-        g, l, rl, metric, g_squared = self.session.run(
-            [self.tfs.grad_pack, self.tfs.loss, self.tfs.reg_loss, self.tfs.unitary_scale, self.tfs.grad_squared])
+        g, l, rl, metric, g_squared = [self.tfs.grad_pack, self.tfs.loss, self.tfs.reg_loss, self.tfs.unitary_scale, self.tfs.grad_squared]
+
+        # g, l, rl, metric, g_squared = self.session.run(
+        #     [self.tfs.grad_pack, self.tfs.loss, self.tfs.reg_loss, self.tfs.unitary_scale, self.tfs.grad_squared])
 
         final_g = np.transpose(np.reshape(
             g, (len(self.sys_para.ops_c)*self.sys_para.steps)))
@@ -188,8 +267,10 @@ class run_session:
 
         print(self.method + ' optimization done')
 
-        g, l, rl = self.session.run(
-            [self.tfs.grad_squared, self.tfs.loss, self.tfs.reg_loss])
+        g, l, rl, metric, g_squared = [self.tfs.grad_pack, self.tfs.loss, self.tfs.reg_loss, self.tfs.unitary_scale, self.tfs.grad_squared]
+
+        # g, l, rl = self.session.run(
+        #     [self.tfs.grad_squared, self.tfs.loss, self.tfs.reg_loss])
 
         if self.sys_para.show_plots == False:
             print(res.message)

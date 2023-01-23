@@ -54,15 +54,16 @@ class SystemParameters:
 
         self.is_dressed = False
         self.U0_c = U0
+        # EG: In TF2, support for complex matrices
         # CtoRMat is converting complex matrices to their equivalent real (double the size) matrices
-        self.initial_unitary = c_to_r_mat(U0)
+        self.initial_unitary = c_to_r_mat(U0)#U0#c_to_r_mat(U0)
         if self.state_transfer == False:
-            self.target_unitary = c_to_r_mat(U)
+            self.target_unitary = c_to_r_mat(U)#U#c_to_r_mat(U)
         else:
             self.target_vectors = []
 
             for target_vector_c in U:
-                self.target_vector = c_to_r_vec(target_vector_c)
+                self.target_vector = c_to_r_vec(target_vector_c)#target_vector_c#c_to_r_vec(target_vector_c)
                 self.target_vectors.append(self.target_vector)
 
         if draw is not None:
@@ -183,7 +184,7 @@ class SystemParameters:
                     self.initial_vector_c[state] = 1
 
             self.initial_vectors_c.append(self.initial_vector_c)
-            self.initial_vector = c_to_r_vec(self.initial_vector_c)
+            self.initial_vector = c_to_r_vec(self.initial_vector_c)#self.initial_vector_c#c_to_r_vec(self.initial_vector_c)
 
             self.initial_vectors.append(self.initial_vector)
 
@@ -197,14 +198,14 @@ class SystemParameters:
 
         self.ops = []
         for op_c in self.ops_c:
-            op = c_to_r_mat(-1j*self.dt*op_c)
+            op = c_to_r_mat(-1j*self.dt*op_c)#-1j*self.dt*op_c#c_to_r_mat(-1j*self.dt*op_c)
             self.ops.append(op)
 
         self.ops_len = len(self.ops)
 
-        self.H0 = c_to_r_mat(-1j*self.dt*self.H0_c)
+        self.H0 = c_to_r_mat(-1j*self.dt*self.H0_c)#-1j*self.dt*self.H0_c#c_to_r_mat(-1j*self.dt*self.H0_c)
         self.identity_c = np.identity(self.state_num)
-        self.identity = c_to_r_mat(self.identity_c)
+        self.identity = c_to_r_mat(self.identity_c)#self.identity_c#c_to_r_mat(self.identity_c)
 
         if self.Taylor_terms is None:
             self.exps = []

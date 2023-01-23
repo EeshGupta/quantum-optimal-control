@@ -1,7 +1,7 @@
 import numpy as np
 from quantum_optimal_control.helper_functions.grape_functions import sort_ev, get_state_index
 import os
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from quantum_optimal_control.helper_functions.data_management import H5File
 
@@ -26,7 +26,7 @@ class Analysis:
 
     def get_final_state(self, save=True):
         # get final evolved unitary state
-        M = self.tf_final_state.eval()
+        M = self.tf_final_state#.eval()
         CMat = self.RtoCMat(M)
 
         if self.sys_para.save and save:
@@ -37,9 +37,9 @@ class Analysis:
 
     def get_ops_weight(self):
         # get control field
-        ops_weight = self.tf_ops_weight.eval()
+        #ops_weight = self.tf_ops_weight.eval()
 
-        return ops_weight
+        return self.tf_ops_weight#ops_weight
 
     def get_inter_vecs(self):
         # get propagated states at each time step
@@ -57,7 +57,7 @@ class Analysis:
 
         ii = 0
 
-        inter_vecs = tf.stack(self.tf_inter_vecs).eval()
+        inter_vecs = tf.stack(self.tf_inter_vecs)#.eval()
 
         if self.sys_para.save:
             with H5File(self.sys_para.file_path) as hf:
@@ -67,9 +67,10 @@ class Analysis:
                     inter_vecs[:, state_num:2*state_num, :]))
 
         for inter_vec in inter_vecs:
-            inter_vec_real = (inter_vec[0:state_num, :])
-            inter_vec_imag = (inter_vec[state_num:2*state_num, :])
-            inter_vec_c = inter_vec_real+1j*inter_vec_imag
+            inter_vec_real = tf.cast((inter_vec[0:state_num, :]), dtype = tf.complex64)
+            inter_vec_imag = tf.cast((inter_vec[state_num:2*state_num, :]), dtype = tf.complex64)
+            imag = tf.complex(0.0,1.0)
+            inter_vec_c = tf.cast(inter_vec_real+imag*inter_vec_imag, dtype = tf.complex64)
 
             if self.sys_para.is_dressed:
 
