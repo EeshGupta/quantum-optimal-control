@@ -60,7 +60,7 @@ class Analysis:
         inter_vecs = tf.stack(self.tf_inter_vecs).eval()
 
         if self.sys_para.save:
-            with H5File(self.sys_para.file_path) as hf:
+            with H5File(self.sys_para.file_path, 'a') as hf:
                 hf.append('inter_vecs_raw_real', np.array(
                     inter_vecs[:, 0:state_num, :]))
                 hf.append('inter_vecs_raw_imag', np.array(
@@ -94,7 +94,7 @@ class Analysis:
             ii += 1
 
         if self.sys_para.save:
-            with H5File(self.sys_para.file_path) as hf:
+            with H5File(self.sys_para.file_path, 'a') as hf:
                 hf.append('inter_vecs_mag_squared',
                           np.array(inter_vecs_mag_squared))
                 hf.append('inter_vecs_real', np.array(inter_vecs_real))

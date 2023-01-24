@@ -188,7 +188,7 @@ class SystemParameters:
             self.initial_vectors.append(self.initial_vector)
 
         if self.save:
-            with H5File(self.file_path) as hf:
+            with H5File(self.file_path, 'a') as hf:
                 hf.add('initial_vectors_c', data=np.array(
                     self.initial_vectors_c))
 
@@ -231,7 +231,7 @@ class SystemParameters:
             self.scaling = self.Taylor_terms[1]
 
         if self.save:
-            with H5File(self.file_path) as hf:
+            with H5File(self.file_path, 'a') as hf:
                 hf.add('taylor_terms', data=self.exp_terms)
                 hf.add('taylor_scaling', data=self.scaling)
 

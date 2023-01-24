@@ -51,7 +51,7 @@ def Grape(H0, Hops, Hnames, U, total_time, steps, states_concerned_list, converg
 
         print("data saved at: " + str(file_path))
 
-        with H5File(file_path) as hf:
+        with H5File(file_path, 'w') as hf:
             hf.add('H0', data=H0)
             hf.add('Hops', data=Hops)
             hf.add('Hnames', data=[Hname.encode('utf8') for Hname in Hnames])
@@ -122,7 +122,7 @@ def Grape(H0, Hops, Hnames, U, total_time, steps, states_concerned_list, converg
         # save wall clock time
         if save:
             wall_clock_time = time.time() - grape_start_time
-            with H5File(file_path) as hf:
+            with H5File(file_path, 'a') as hf:
                 hf.add('wall_clock_time', data=np.array(wall_clock_time))
             print("data saved at: " + str(file_path))
 
@@ -132,7 +132,7 @@ def Grape(H0, Hops, Hnames, U, total_time, steps, states_concerned_list, converg
         # save wall clock time
         if save:
             wall_clock_time = time.time() - grape_start_time
-            with H5File(file_path) as hf:
+            with H5File(file_path, 'a') as hf:
                 hf.add('wall_clock_time', data=np.array(wall_clock_time))
             print("data saved at: " + str(file_path))
 
