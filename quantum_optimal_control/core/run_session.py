@@ -131,6 +131,8 @@ class run_session:
         if self.sys_para.save:
             self.elapsed = time.time() - self.start_time
             with H5File(self.sys_para.file_path, 'a') as hf:
+                print(list(hf.keys()))
+                print(self.l)
                 hf.append('error', np.array(self.l))
                 hf.append('reg_error', np.array(self.rl))
                 hf.append('uks', np.array(self.Get_uks()))

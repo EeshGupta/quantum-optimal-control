@@ -1,3 +1,4 @@
+#/home/eag190/miniconda3/envs/simulations/lib/python3.9/site-packages/quantum_optimal_control-0.1.0-py3.9.egg/quantum_optimal_control/helper_functions/
 """
 data management library used for the Schuster lab experiments
 originally written by: Phil Reinhold & David Schuster
@@ -162,11 +163,12 @@ class H5File(h5py.File):
         """
 
         data = np.array(data)
-        try:
+        
+        if not key in f:
             f.create_dataset(key, shape=tuple([1] + list(data.shape)),
                              maxshape=tuple([None] * (len(data.shape) + 1)),
                              dtype=str(data.dtype))
-        except RuntimeError:
+        else:
             if forceInit == True:
                 del f[key]
                 f.create_dataset(key, shape=tuple([1] + list(data.shape)),
@@ -179,12 +181,16 @@ class H5File(h5py.File):
             dataset.resize(Shape)
 
         dataset = f[key]
-        try:
-            dataset[-1, :] = data
-        except TypeError:
+        
+        if len(dataset.shape) == 1: #Added by EG
             dataset[-1] = data
-            # Usage require strictly same dimensionality for all data appended.
-            # currently I don't have it setup to return a good exception, but should
+        else: 
+            try:
+                dataset[-1, :] = data
+            except TypeError:
+                dataset[-1] = data
+                # Usage require strictly same dimensionality for all data appended.
+                # currently I don't have it setup to return a good exception, but should
 
     def add(self, key, data):
         self.add_data(self, key, data)
